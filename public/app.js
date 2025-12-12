@@ -179,7 +179,7 @@ function renderTable(te) {
     html += '</tr>';
   }
   html += '</table>';
-  html += '<button type="button" onclick="exportToCanvas()">Exportera valda till Canvas</button>';
+  html += '<button type="button" id="exportBtn" onclick="exportToCanvas()" style="margin-top:10px">Exportera valda till Canvas</button>';
   html += '</form>';
   return html;
 }
