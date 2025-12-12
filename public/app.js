@@ -22,7 +22,35 @@ async function fetchSchedule() {
     const res = await fetch('/api/timeedit?url=' + encodeURIComponent(url));
     const data = await res.json();
     if (!data.ok) throw new Error(data.message);
-    resultDiv.innerHTML = '<pre>' + JSON.stringify(data.data, null, 2) + '</pre>';
+    // Formatera och visa schemat snyggt i en tabell
+    const te = data.data;
+    if (!te.reservations || te.reservations.length === 0) {
+      resultDiv.innerHTML = '<span style="color:orange">Inga bokningar hittades.</span>';
+      return;
+    }
+    let html = '<table border="1" style="border-collapse:collapse;max-width:100%">';
+    // Tabellhuvud
+    html += '<tr>';
+    for (const header of te.columnheaders) {
+      html += '<th>' + header + '</th>';
+    }
+    html += '<th>Startdatum</th><th>Starttid</th><th>Slutdatum</th><th>Sluttid</th>';
+    html += '</tr>';
+    // Rader
+    for (const r of te.reservations) {
+      html += '<tr>';
+      for (const col of r.columns) {
+        html += '<td>' + (col || '') + '</td>';
+      }
+      html += '<td>' + r.startdate + '</td>';
+      html += '<td>' + r.starttime + '</td>';
+      html += '<td>' + r.enddate + '</td>';
+      html += '<td>' + r.endtime + '</td>';
+      html += '</tr>';
+    }
+    html += '</table>';
+    // Visa tabellen och sedan rå JSON under
+    resultDiv.innerHTML = html + '<h3>Rå JSON-data</h3><pre>' + JSON.stringify(te, null, 2) + '</pre>';
   } catch (err) {
     resultDiv.innerHTML = '<span style="color:red">Fel: ' + err.message + '</span>';
   }
