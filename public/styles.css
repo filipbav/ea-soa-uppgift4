@@ -1,0 +1,85 @@
+body {
+	font-family: 'Segoe UI', Arial, sans-serif;
+	background: #f4f7fa;
+	margin: 0;
+	padding: 0 0 40px 0;
+}
+
+h1 {
+	color: #2a4d69;
+	text-align: center;
+	margin-top: 32px;
+	margin-bottom: 24px;
+}
+
+.input-row {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+input[type="text"], input[type="url"] {
+	padding: 7px 10px;
+	border: 1px solid #bfc9d1;
+	border-radius: 4px;
+	font-size: 1rem;
+}
+
+button {
+	background: #2a4d69;
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	padding: 8px 18px;
+	font-size: 1rem;
+	cursor: pointer;
+	transition: background 0.2s;
+	margin-left: 8px;
+}
+button:hover {
+	background: #41729f;
+}
+
+#result {
+	max-width: 1100px;
+	margin: 0 auto;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 2px 12px #0001;
+	padding: 24px 24px 32px 24px;
+	min-height: 60px;
+}
+
+table {
+	width: 100%;
+	margin: 18px 0 10px 0;
+	border-collapse: collapse;
+	background: #f8fafc;
+}
+th, td {
+	padding: 7px 10px;
+	border: 1px solid #bfc9d1;
+	text-align: left;
+}
+th {
+	background: #e3eaf2;
+	color: #2a4d69;
+}
+tr:nth-child(even) td {
+	background: #f1f5fa;
+}
+
+#exportBtn {
+	margin-top: 18px;
+	margin-bottom: 8px;
+	display: inline-block;
+}
+
+pre {
+	background: #f8f8f8;
+	border-radius: 4px;
+	padding: 12px;
+	font-size: 0.98rem;
+	overflow-x: auto;
+}
