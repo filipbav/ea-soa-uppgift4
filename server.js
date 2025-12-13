@@ -1,9 +1,9 @@
 
-require('dotenv').config();
 
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 
 const timeEditService = require('./services/timeEditService');
 const canvasService = require('./services/canvasService');
@@ -11,8 +11,31 @@ const canvasService = require('./services/canvasService');
 app.use(express.json());
 app.use(express.static('public'));
 
-// API-route: Hämtar schema från TimeEdit
-// Anropas från frontend via /api/timeedit?url=...
+// rout för canvas
+app.post('/api/canvas-export', async (req, res) => {
+    const reservations = req.body.reservations;
+    if (!Array.isArray(reservations) || reservations.length === 0) {
+        return res.status(400).json({ ok: false, message: 'Inga reservationer att exportera.' });
+    }
+    try {
+        // Konvertera och exportera varje reservation
+        const results = [];
+        for (const reservation of reservations) {
+            try {
+                const eventObj = canvasService.timeEditToCanvasEvent(reservation);
+                const apiResult = await canvasService.createCalendarEvent(eventObj);
+                results.push({ ok: true, event: apiResult });
+            } catch (err) {
+                results.push({ ok: false, message: err.message });
+            }
+        }
+        res.json({ ok: true, results });
+    } catch (err) {
+        res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
+// route för timeedit
 app.get('/api/timeedit', async (req, res) => {
     const url = req.query.url;
     if (!url) {
@@ -35,6 +58,7 @@ app.get('/api/timeedit', async (req, res) => {
         res.status(500).json({ ok: false, message: err.message });
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);

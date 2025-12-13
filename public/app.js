@@ -1,7 +1,5 @@
 
 
-// Hämtar schema från TimeEdit och renderar
-// Spara senaste TimeEdit-data globalt för export
 let lastTimeEditData = null;
 
 async function fetchAndRenderSchedule() {
@@ -12,6 +10,8 @@ async function fetchAndRenderSchedule() {
     resultDiv.innerHTML = error;
     return;
   }
+  // Visa laddningsindikator
+  resultDiv.innerHTML = '<div style="text-align:center;padding:20px;"><div style="border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 2s linear infinite;margin:0 auto;"></div><p>Hämtar schema...</p></div>';
   try {
     const res = await fetch('/api/timeedit?url=' + encodeURIComponent(url));
     const data = await res.json();
@@ -23,7 +23,6 @@ async function fetchAndRenderSchedule() {
   }
 }
 
-// Exporterar valda rader till Canvas (placeholder)
 function exportToCanvas() {
   const form = document.getElementById('exportForm');
   if (!form) {
@@ -39,47 +38,47 @@ function exportToCanvas() {
     alert('Ingen TimeEdit-data att exportera.');
     return;
   }
-  // Bygg exportobjekt med samma struktur som renderJson
-  const exportObj = {
-    columnheaders: lastTimeEditData.columnheaders,
-    info: lastTimeEditData.info,
-    reservations: selectedRows
-  };
-  showModalWithJson('Export till Canvas är inte implementerat än. Här är JSON för valda rader:', exportObj);
+  // Visa laddningsindikator
+  const exportBtn = document.getElementById('exportBtn');
+  exportBtn.disabled = true;
+  exportBtn.textContent = 'Exporterar...';
+  // Skicka valda rader till backend för export till Canvas
+  fetch('/api/canvas-export', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ reservations: selectedRows })
+  })
+    .then(res => res.json())
+    .then(data => {
+      exportBtn.disabled = false;
+      exportBtn.textContent = 'Exportera valda till Canvas';
+      if (!data.ok) {
+        showModalWithText('Fel vid export', data.message || 'Okänt fel');
+        return;
+      }
+      // Visa resultat för varje rad
+      let html = '<h4>Exportresultat</h4><ul>';
+      selectedRows.forEach((row, i) => {
+        const result = data.results[i];
+        const title = row.columns[0] || 'Okänd titel';
+        if (result.ok) {
+          html += `<li style="color:green">${title}: Export OK (ID: ${result.event.id})</li>`;
+        } else {
+          html += `<li style="color:red">${title}: Fel - ${result.message}</li>`;
+        }
+      });
+      html += '</ul>';
+      showModalWithText('Export till Canvas', html);
+    })
+    .catch(err => {
+      exportBtn.disabled = false;
+      exportBtn.textContent = 'Exportera valda till Canvas';
+      showModalWithText('Fel vid export', err.message);
+    });
 }
 
-// Visar en enkel modal med JSON-innehåll (formatterat som i renderJson)
-function showModalWithJson(title, data) {
-  let modal = document.getElementById('exportModal');
-  const jsonStr = JSON.stringify(data, null, 2);
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'exportModal';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100vw';
-    modal.style.height = '100vh';
-    modal.style.background = 'rgba(0,0,0,0.5)';
-    modal.style.display = 'flex';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    modal.style.zIndex = '9999';
-    modal.innerHTML = `
-      <div id="exportModalContent" style="background:#fff;padding:20px;max-width:90vw;max-height:80vh;overflow:auto;border-radius:8px;box-shadow:0 2px 16px #0008;">
-        <h3 style="margin-top:0">${title}</h3>
-        <h4>JSON-data</h4>
-        <pre id="exportModalPre" style="white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;background:#f8f8f8;padding:10px;border-radius:4px;">${jsonStr}</pre>
-        <button onclick="document.getElementById('exportModal').remove()" style="margin-top:10px">Stäng</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
-  } else {
-    document.getElementById('exportModalContent').querySelector('h3').textContent = title;
-    document.getElementById('exportModalContent').querySelector('pre').textContent = jsonStr;
-    modal.style.display = 'flex';
-  }
-}
 
 // Visar en enkel modal med textinnehåll
 function showModalWithText(title, text) {
@@ -122,7 +121,7 @@ function validateUrl(url) {
   return null;
 }
 
-// Renderar hela schemat (info, tabell, JSON)
+// Renderar hela schemat (info, tabell)
 function renderSchedule(te) {
   const resultDiv = document.getElementById('result');
   if (!te.reservations || te.reservations.length === 0) {
@@ -130,7 +129,7 @@ function renderSchedule(te) {
     document.getElementById('exportBtn').style.display = 'none';
     return;
   }
-  resultDiv.innerHTML = renderInfo(te) + renderTable(te) + renderJson(te);
+  resultDiv.innerHTML = renderInfo(te) + renderTable(te);
   document.getElementById('exportBtn').style.display = 'inline-block';
 }
 
@@ -158,36 +157,48 @@ function renderInfo(te) {
 
 // Renderar tabellen med bokningar och redigerbara fält
 function renderTable(te) {
-  let html = '<form id="exportForm"><table border="1" style="border-collapse:collapse;max-width:100%">';
+  let html = `<form id="exportForm">
+    <div style="margin-bottom:6px;font-size:0.95em">
+      <span style="display:inline-block;width:18px;height:18px;background:#fff;border:2px solid #1976d2;vertical-align:middle;margin-right:4px"></span> Redigerbar
+      <span style="display:inline-block;width:18px;height:18px;background:#f4f4f4;color:#888;border:1px solid #ddd;vertical-align:middle;margin-left:16px;margin-right:4px"></span> Endast läsbar
+    </div>
+    <div style="overflow-x:auto;">
+    <table border="1" style="border-collapse:collapse;min-width:100%">`;
   html += '<tr><th>Välj</th>';
   for (const header of te.columnheaders) {
     html += '<th>' + header + '</th>';
   }
   html += '<th>Startdatum</th><th>Starttid</th><th>Slutdatum</th><th>Sluttid</th>';
   html += '</tr>';
+  // Index för redigerbara fält (Canvas: Titel, Plats, Kommentar)
+  const titleIndex = 0;
+  const locationIndex = 1;
+  const commentIndex = 7;
   for (let i = 0; i < te.reservations.length; i++) {
     const r = te.reservations[i];
     html += '<tr>';
     html += `<td><input type="checkbox" name="select" value="${i}" checked></td>`;
     for (let j = 0; j < r.columns.length; j++) {
-      html += `<td><input type="text" name="col${i}_${j}" value="${r.columns[j] || ''}"></td>`;
+      let editable = (j === titleIndex || j === locationIndex || j === commentIndex);
+      if (editable) {
+        html += `<td><input type="text" name="col${i}_${j}" value="${r.columns[j] || ''}" style="background:#fff;border:2px solid #1976d2;font-weight:500;color:#222"></td>`;
+      } else {
+        html += `<td><input type="text" name="col${i}_${j}" value="${r.columns[j] || ''}" readonly style="background:#f4f4f4;color:#888;border:1px solid #ddd"></td>`;
+      }
     }
-    html += `<td><input type="text" name="startdate${i}" value="${r.startdate}"></td>`;
-    html += `<td><input type="text" name="starttime${i}" value="${r.starttime}"></td>`;
-    html += `<td><input type="text" name="enddate${i}" value="${r.enddate}"></td>`;
-    html += `<td><input type="text" name="endtime${i}" value="${r.endtime}"></td>`;
+    html += `<td><input type="text" name="startdate${i}" value="${r.startdate}" style="background:#fff;border:2px solid #1976d2;font-weight:500;color:#222"></td>`;
+    html += `<td><input type="text" name="starttime${i}" value="${r.starttime}" style="background:#fff;border:2px solid #1976d2;font-weight:500;color:#222"></td>`;
+    html += `<td><input type="text" name="enddate${i}" value="${r.enddate}" style="background:#fff;border:2px solid #1976d2;font-weight:500;color:#222"></td>`;
+    html += `<td><input type="text" name="endtime${i}" value="${r.endtime}" style="background:#fff;border:2px solid #1976d2;font-weight:500;color:#222"></td>`;
     html += '</tr>';
   }
   html += '</table>';
+  html += '</div>';
   html += '<button type="button" id="exportBtn" onclick="exportToCanvas()" style="margin-top:10px">Exportera valda till Canvas</button>';
   html += '</form>';
   return html;
 }
 
-// Renderar rå JSON-data
-function renderJson(te) {
-  return '<h3>Rå JSON-data</h3><pre>' + JSON.stringify(te, null, 2) + '</pre>';
-}
 
 // Samlar in valda och redigerade rader från formuläret
 function getSelectedRowsFromForm(form) {
